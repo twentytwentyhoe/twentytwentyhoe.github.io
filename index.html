@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Photo Grid Gallery</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #121212;
+      color: #fff;
+      font-family: sans-serif;
+      padding: 1em;
+    }
+    h1 {
+      text-align: center;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 1em;
+      margin-bottom: 1em;
+      flex-wrap: wrap;
+    }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .item {
+      position: relative;
+    }
+    .item img {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .item img:hover {
+      transform: scale(1.05);
+    }
+    .checkbox {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 4px;
+    }
+    .checkbox input {
+      transform: scale(1.3);
+    }
+    button {
+      padding: 0.5em 1em;
+      background: #1e88e5;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1565c0;
+    }
+  </style>
+</head>
+<body>
+  <h1>📷 Shared Photo Gallery</h1>
+  <div class="controls">
+    <button onclick="downloadSelected()">Download Selected</button>
+    <button onclick="downloadAll()">Download All</button>
+  </div>
+  <div class="gallery" id="gallery"></div>
+
+  <script>
+    const folderId = '1v-9l8q6QZUvFc9vr7-NBshCugcyErzDJ';
+    const apiKey = 'AIzaSyAIf_Zlg7Yzx4t16vznBJvc5CCbs8PUyJo';
+
+    async function fetchPhotos() {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType+contains+'image/'&key=${apiKey}&fields=files(id,name)`
+      );
+      const data = await res.json();
+      return data.files;
+    }
+
+    function createImageItem(file) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'item';
+
+      const checkbox = document.createElement('div');
+      checkbox.className = 'checkbox';
+      checkbox.innerHTML = `<input type="checkbox" data-id="${file.id}" data-name="${file.name}" />`;
+
+      const img = document.createElement('img');
+      img.src = `https://drive.google.com/uc?export=view&id=${file.id}`;
+      img.alt = file.name;
+
+      wrapper.appendChild(checkbox);
+      wrapper.appendChild(img);
+      return wrapper;
+    }
+
+    async function loadGallery() {
+      const gallery = document.getElementById('gallery');
+      gallery.innerHTML = 'Loading...';
+      const photos = await fetchPhotos();
+      gallery.innerHTML = '';
+      photos.forEach(file => {
+        const item = createImageItem(file);
+        gallery.appendChild(item);
+      });
+    }
+
+    function getSelectedFiles() {
+      return Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(cb => ({
+        id: cb.dataset.id,
+        name: cb.dataset.name,
+        url: `https://drive.google.com/uc?export=download&id=${cb.dataset.id}`
+      }));
+    }
+
+    function triggerDownload(url, name) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function downloadSelected() {
+      const selected = getSelectedFiles();
+      if (!selected.length) {
+        alert('No photos selected.');
+        return;
+      }
+      selected.forEach(file => triggerDownload(file.url, file.name));
+    }
+
+    async function downloadAll() {
+      const photos = await fetchPhotos();
+      photos.forEach(file => {
+        const url = `https://drive.google.com/uc?export=download&id=${file.id}`;
+        triggerDownload(url, file.name);
+      });
+    }
+
+    loadGallery();
+  </script>
+</body>
+</html>
